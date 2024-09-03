@@ -17,24 +17,29 @@ interface Restaurant {
 function RestaurantSearch() {
   const [location, setLocation] = useState('');
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState({ lat: 0, lng: 0 });
+  const [selectedLocation, setSelectedLocation] = useState({ lat:-37.8064, lng: 144.963 }); //default to swanston st. melbourne
 
   function handleLocationChange(event: React.ChangeEvent<HTMLInputElement>) {
     setLocation(event.target.value);
   }
 
-  async function handleSearch() {
-    const results: Restaurant[] = await fetchRestaurants(location);
-    console.log(results);
+  // async function handleSearch() {
+  async function handleSearch(event: React.FormEvent) {
+    event.preventDefault();
+    console.log("Search:",location);
+    const results: Restaurant[] = await fetchRestaurants(location, selectedLocation.lat+' '+selectedLocation.lng);
+    console.log("results:",results);
     setRestaurants(results);
   }
 
   function handleRestaurantClick(lat: number, lng: number) {
+    console.log("search lat:", lat, ",lng:", lng);
     setSelectedLocation({ lat, lng });
   }
 
   return (
     <div>
+      <form onSubmit={handleSearch}>
       <input
         type="text"
         value={location}
@@ -42,7 +47,8 @@ function RestaurantSearch() {
         placeholder="Enter a location"
         className="p-2 border"
       />
-      <button onClick={handleSearch} className="p-2 bg-blue-500 text-white">Search</button>
+      <button type="submit" className="p-2 bg-blue-500 text-white">Search</button>
+      </form>
       <ul>
         {restaurants.map(function (restaurant) {
           return (

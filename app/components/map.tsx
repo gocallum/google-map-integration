@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY;
 
 function loadGoogleMapsScript(callback: () => void) {
   if (typeof window !== 'undefined' && !window.google) {
@@ -16,16 +16,23 @@ function loadGoogleMapsScript(callback: () => void) {
 function GoogleMap({ lat, lng }: { lat: number, lng: number }) {
   useEffect(function () {
     loadGoogleMapsScript(function () {
+      var coordinates = { lat: lat, lng: lng };
+      console.log("Coordinates:", coordinates);
       if (typeof google !== 'undefined') {
         const map = new google.maps.Map(document.getElementById('map') as HTMLElement, {
-          center: { lat, lng },
+          center: coordinates,
           zoom: 15,
         });
 
         new google.maps.Marker({
-          position: { lat, lng },
-          map,
+          position: coordinates,
+          map
         });
+
+        // new google.maps.marker.AdvancedMarkerElement({
+        //   map,
+        //   position: coordinates,
+        // });
       }
     });
   }, [lat, lng]);

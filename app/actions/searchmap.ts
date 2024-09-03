@@ -37,17 +37,18 @@ export interface PlacePrediction {
 export  type AutocompleteResult = PlacePrediction | QueryPrediction;
 
 
-  
-  
 
-export async function fetchRestaurants(location: string) {
+export async function fetchRestaurants(keyword: string, selectedLoc: string) {
+  console.log("Input:",keyword);
+
   if (!GOOGLE_MAP_KEY) {
     throw new Error('Google Maps API key is missing');
   }
-
-  console.log(location);
   
-  const response = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location}&radius=1500&type=restaurant&key=${GOOGLE_MAP_KEY}`, {
+  //sample
+  //https://maps.googleapis.com/maps/api/place/nearbysearch/json?keyword=chicken&location=-37.8064%2C144.963&radius=1500&type=restaurant&key=AIzaSyANdvkq9DwU5jVUNGuCLjtxFKMbJh0JIV0
+  
+  const response = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?keyword=${keyword}&location=${selectedLoc}&radius=1500&type=restaurant&key=${GOOGLE_MAP_KEY}`, {
     method: 'GET',
     next: { revalidate: 60 },  // Revalidate the response every 60 seconds
   });
@@ -57,7 +58,7 @@ export async function fetchRestaurants(location: string) {
   }
 
   const data = await response.json();
-  console.log(data);
+  console.log("Res:",data);
   return data.results;
 }
 
@@ -82,6 +83,8 @@ export async function fetchRestaurantAutocomplete(query: string, city: string, s
       },
       includedRegionCodes: ['au'],
     };
+
+    console.log("Request:", requestBody);
   
     const response = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
       method: 'POST',
@@ -92,7 +95,8 @@ export async function fetchRestaurantAutocomplete(query: string, city: string, s
       body: JSON.stringify(requestBody),
       cache: 'no-store',  // Disable caching for this request
     });
-  
+
+    console.log('Response:',response);
     if (!response.ok) {
         console.error(response);
       throw new Error(`Failed to fetch autocomplete: ${response.statusText}`);
