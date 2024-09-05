@@ -59,47 +59,32 @@ export async function fetchRestaurants(keyword: string, selectedLoc: string) {
   return data.results;
 }
 
-export async function fetchRestaurantAutocomplete(query: string, city: string, state: string, postcode: string): Promise<AutocompleteResult[]> {
+// Function to fetch restaurant autocomplete suggestions
+export async function fetchRestaurantAutocomplete(query: string, location: string): Promise<AutocompleteResult[]> {
+  console.log('Fetching autocomplete for:"'+ query + '","location:"' + location + '"');
   if (!GOOGLE_MAP_KEY) {
     throw new Error('Google Maps API key is missing');
   }
 
-  const requestBody = {
-    input: query,
-    locationBias: {
-      rectangle: {
-        low: {
-          latitude: -43.00311,  // Southernmost point of Australia
-          longitude: 113.6594,  // Westernmost point of Australia
-        },
-        high: {
-          latitude: -10.0,     // Northernmost point of Australia
-          longitude: 153.61194, // Easternmost point of Australia
-        }
-      }
-    },
-    includedRegionCodes: ['au'],
-  };
-
-  console.log("Request:", requestBody);
-
-  const response = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
-    method: 'POST',
+  // Construct the API endpoint URL with query parameters
+  // const endpoint = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&location=${location}&radius=1500&types=restaurant&key=${GOOGLE_MAP_KEY}`;
+  const endpoint = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?keyword=${query}&location=${location}&radius=1500&type=restaurant&key=${GOOGLE_MAP_KEY}`;
+  console.log("endpoint:", endpoint);
+  // Send GET request to Google Places Autocomplete API
+  const response = await fetch(endpoint, {
+    method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      'X-Goog-Api-Key': GOOGLE_MAP_KEY,
     },
-    body: JSON.stringify(requestBody),
-    cache: 'no-store',  // Disable caching for this request
+    cache: 'no-store', // Disable caching
   });
 
-  console.log('Response:', response);
   if (!response.ok) {
-    console.error(response);
+    console.error('Error response:', response);
     throw new Error(`Failed to fetch autocomplete: ${response.statusText}`);
   }
 
   const data = await response.json();
-  console.log(data);
-  return data.suggestions as AutocompleteResult[];
+ console.log('Autocomplete data received:', data); 
+  return data.results as AutocompleteResult[];
 }
