@@ -1,5 +1,12 @@
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
+## Create a key & enable Google Maps related API
+1. Go to Google Cloud console https://console.cloud.google.com/ and create new project
+2. On the Credentials page, click Create credentials > API key.
+The API key created dialog displays your newly created API key. Copy the key to env local
+3. Go to 'API & Services', make sure Places API, Places API (New), Geocoding API and Geolocation API is enabled. Otherwise click on the button to enable. 
+
+
 ## Getting Started
 
 First, run the development server:
