@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import AsyncSelect from 'react-select/async';
-import { AutocompleteResult, fetchRestaurantAutocomplete, PlacePrediction } from '@/app/actions/searchmap';
+import { fetchRestaurantAutocomplete, PlacePrediction } from '@/app/actions/searchmap';
+import { SingleValue } from 'react-select';
 
 // Define the structure of a VenueOption
 interface VenueOption {
@@ -11,14 +12,15 @@ interface VenueOption {
   location: string;
   placePrediction?: any; // Adjust based on your data structure
 }
+type BasicOption = { label: string; value: string };
 
 function RestaurantAutocompleteSearch() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [postcode, setPostcode] = useState('');
   const [selectedVenue, setSelectedVenue] = useState<VenueOption | null>(null);
-  const [allVenue, setAllVenue] = useState<VenueOption[] | null>(null);
   const [selectedLocation, setSelectedLocation] = useState('');
+  const [suggestions, setSuggestions] = useState<VenueOption[]>([]);
   const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY;
 
   // Function to fetch user's current location and get city, state, postcode
@@ -87,7 +89,18 @@ function RestaurantAutocompleteSearch() {
         setState(state);
         setPostcode(postcode);
         setSelectedLocation(lat + ' ' + lon);
-        loadRestaurantOptions(lat + ' ' + lon);
+
+        const suggestions = await fetchRestaurantAutocomplete('', lat + ' ' + lon);
+        console.log(">> Suggestions received:", suggestions);
+
+        // Store the suggestions in state
+        const venueOptions = suggestions.map((result: any) => ({
+          label: result.name || 'Unknown',
+          value: result.place_id || 'unknown',
+          location: result.geometry.location.lat + ' ' + result.geometry.location.lng || 'unknown',
+        }));
+        console.log('Venue Options:', venueOptions);
+        setSuggestions(venueOptions);
       }
     } catch (error) {
       console.error('Error during reverse geocoding:', error);
@@ -99,48 +112,30 @@ function RestaurantAutocompleteSearch() {
     getCurrentLocation();
   }, []);
 
-  // parameter needed is location which comes from the auto location
-  const loadRestaurantOptions = async (location: string): Promise<VenueOption[]> => {
-    try {
-      // Debugging: Check if inputValue is correct
-      console.log("Fetching restaurant suggestions for:", location);
-
-      // Fetch suggestions based on input
-      const suggestions = await fetchRestaurantAutocomplete('', location); //source of value?
-      console.log("Suggestions received:", suggestions); // Inspect data
-
-      return suggestions.map((result: any) => ({
-        label: result.name || 'Unknown',  // Get the description from the API response
-        value: result.place_id || 'unknown',     // Get the place_id from the API response
-        location: result.geometry.location.lat + ' ' + result.geometry.location.lng || 'unknown',
-      }));
-    } catch (error) {
-      console.error('Error fetching autocomplete suggestions:', error);
-      return [];
-    }
-  };
 
 
-  // Mock function to load venue options (replace with your API)
-  const loadOptions = (inputValue: string): Promise<VenueOption[]> => {
+  // load venue options...
+  const loadRestaurantOptions = (inputValue: string): Promise<VenueOption[]> => {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        const options: VenueOption[] = [
-          { label: 'Venue 1', value: 'venue1', location: 'Location 1' },
-          { label: 'Venue 2', value: 'venue2', location: 'Location 2' },
-          { label: 'Venue 3', value: 'venue3', location: 'Location 3' },
-        ].filter(option =>
-          option.label.toLowerCase().includes(inputValue.toLowerCase())
-        );
-        resolve(options);
-      }, 1000);
+      const filteredOptions = suggestions.filter(option =>
+        option.label.toLowerCase().includes(inputValue.toLowerCase())
+      );
+      resolve(filteredOptions);
     });
   };
 
-
   // Handle venue selection from AsyncSelect
-  const handleVenueSelect = (selectedOption: VenueOption | null) => {
-    setSelectedVenue(selectedOption);
+  const handleVenueSelect = (newValue: SingleValue<BasicOption>, actionMeta: any) => {
+    if (newValue) {
+      const venueOption: VenueOption = {
+        label: newValue.label,
+        value: newValue.value,
+        location: 'some-location', // Add logic to derive the location
+      };
+      setSelectedVenue(venueOption);
+    } else {
+      setSelectedVenue(null);
+    }
   };
 
   return (
@@ -185,12 +180,12 @@ function RestaurantAutocompleteSearch() {
         <label className="block text-gray-700">Restaurant Search:</label>
         <AsyncSelect
           cacheOptions
-          loadOptions={loadOptions}
+          loadOptions={loadRestaurantOptions}
           defaultOptions
-          onChange={handleVenueSelect}
+          onChange={handleVenueSelect} // Updated handler
           placeholder="Search for restaurants"
+          value={selectedVenue ? { label: selectedVenue.label, value: selectedVenue.value } : null}
           isClearable
-          value={selectedVenue}
         />
       </div>
 
