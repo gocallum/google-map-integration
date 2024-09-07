@@ -96,7 +96,7 @@ function RestaurantAutocompleteSearch() {
 
         // Store the suggestions in state
         const venueOptions = suggestions.map((result: any) => ({
-          label: result.name + "(" + result.vicinity + ")" || 'Unknown',
+          label: result.name + " (" + result.vicinity + ")" || 'Unknown',
           name: result.name || 'unknown',
           value: result.place_id || 'unknown',
           lat: result.geometry.location.lat || 'unknown',
@@ -121,8 +121,8 @@ function RestaurantAutocompleteSearch() {
   // load venue options...
   const loadRestaurantOptions = (inputValue: string): Promise<VenueOption[]> => {
     return new Promise((resolve) => {
-      const filteredOptions = suggestions.filter(option =>
-        option.label.toLowerCase().includes(inputValue.toLowerCase())
+      const filteredOptions = suggestions.filter(option => 
+        option.name.toLowerCase().startsWith(inputValue.toLowerCase()) // Match if the label starts with the input
       );
       resolve(filteredOptions);
     });
