@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { fetchRestaurants } from '@/app/actions/searchmap';
 import GoogleMap from './map';
 
@@ -23,30 +23,6 @@ function RestaurantSearch() {
 
   function handleLocationChange(event: React.ChangeEvent<HTMLInputElement>) {
     setLocation(event.target.value);
-  }
-
-  //load current location
-  function loadcurrentlocation() {
-    useEffect(() => {
-      console.log("Page reloaded!");
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position: GeolocationPosition) => {
-            setSelectedLocation({
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            });
-            console.log('Geolocation detected:', position.coords.latitude, position.coords.latitude);
-          },
-          (error: GeolocationPositionError) => {
-            console.error('Error getting location:', error);
-          }
-        );
-      } else {
-        console.log('Geolocation is not supported by this browser.');
-      }
-
-    }, []);
   }
 
   // async function handleSearch() {
