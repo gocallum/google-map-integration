@@ -121,10 +121,9 @@ function RestaurantAutocompleteSearch() {
   // load venue options...
   const loadRestaurantOptions = (inputValue: string): Promise<VenueOption[]> => {
     return new Promise((resolve) => {
-      const filteredOptions = suggestions.filter(option => {
-        const wordsInLabel = option.name.toLowerCase().split(' '); // Split the label into words
-        return wordsInLabel.includes(inputValue.toLowerCase()); // Match if input is a complete word in the label
-      });
+      const filteredOptions = suggestions.filter(option =>
+        option.label.toLowerCase().includes(inputValue.toLowerCase())
+      );
       resolve(filteredOptions);
     });
   };
