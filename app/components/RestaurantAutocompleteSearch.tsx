@@ -4,22 +4,24 @@ import React, { useEffect, useState } from 'react';
 import AsyncSelect from 'react-select/async';
 import { fetchRestaurantAutocomplete, PlacePrediction } from '@/app/actions/searchmap';
 import { SingleValue } from 'react-select';
+import GoogleMap from './map';
 
 // Define the structure of a VenueOption
 interface VenueOption {
   label: string;
+  name: string;
   value: string;
-  location: string;
-  placePrediction?: any; // Adjust based on your data structure
+  lat: number;
+  lon: number;
+  address: string;
 }
-type BasicOption = { label: string; value: string };
+type BasicOption = { label: string; name: string; value: string, lat: number, lon: number, address: string };
 
 function RestaurantAutocompleteSearch() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [postcode, setPostcode] = useState('');
   const [selectedVenue, setSelectedVenue] = useState<VenueOption | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState('');
   const [suggestions, setSuggestions] = useState<VenueOption[]>([]);
   const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY;
 
@@ -88,16 +90,18 @@ function RestaurantAutocompleteSearch() {
         setCity(city);
         setState(state);
         setPostcode(postcode);
-        setSelectedLocation(lat + ' ' + lon);
 
         const suggestions = await fetchRestaurantAutocomplete('', lat + ' ' + lon);
         console.log(">> Suggestions received:", suggestions);
 
         // Store the suggestions in state
         const venueOptions = suggestions.map((result: any) => ({
-          label: result.name || 'Unknown',
+          label: result.name + "(" + result.vicinity + ")" || 'Unknown',
+          name: result.name || 'unknown',
           value: result.place_id || 'unknown',
-          location: result.geometry.location.lat + ' ' + result.geometry.location.lng || 'unknown',
+          lat: result.geometry.location.lat || 'unknown',
+          lon: result.geometry.location.lng || 'unknown',
+          address: result.vicinity || 'unknown',
         }));
         console.log('Venue Options:', venueOptions);
         setSuggestions(venueOptions);
@@ -117,9 +121,10 @@ function RestaurantAutocompleteSearch() {
   // load venue options...
   const loadRestaurantOptions = (inputValue: string): Promise<VenueOption[]> => {
     return new Promise((resolve) => {
-      const filteredOptions = suggestions.filter(option =>
-        option.label.toLowerCase().includes(inputValue.toLowerCase())
-      );
+      const filteredOptions = suggestions.filter(option => {
+        const wordsInLabel = option.name.toLowerCase().split(' '); // Split the label into words
+        return wordsInLabel.includes(inputValue.toLowerCase()); // Match if input is a complete word in the label
+      });
       resolve(filteredOptions);
     });
   };
@@ -127,12 +132,9 @@ function RestaurantAutocompleteSearch() {
   // Handle venue selection from AsyncSelect
   const handleVenueSelect = (newValue: SingleValue<BasicOption>, actionMeta: any) => {
     if (newValue) {
-      const venueOption: VenueOption = {
-        label: newValue.label,
-        value: newValue.value,
-        location: 'some-location', // Add logic to derive the location
-      };
-      setSelectedVenue(venueOption);
+      const venueOption = suggestions.find(option => option.name.toLowerCase() === newValue.name.toLowerCase());
+      if (venueOption)
+        setSelectedVenue(venueOption);
     } else {
       setSelectedVenue(null);
     }
@@ -184,7 +186,7 @@ function RestaurantAutocompleteSearch() {
           defaultOptions
           onChange={handleVenueSelect} // Updated handler
           placeholder="Search for restaurants"
-          value={selectedVenue ? { label: selectedVenue.label, value: selectedVenue.value } : null}
+          value={selectedVenue ? { label: selectedVenue.label, name: selectedVenue.name, value: selectedVenue.value, lat: selectedVenue.lat, lon: selectedVenue.lon, address: selectedVenue.address } : null}
           isClearable
         />
       </div>
@@ -193,6 +195,7 @@ function RestaurantAutocompleteSearch() {
         <div className="mt-4">
           <h2 className="text-xl font-semibold">Selected Venue:</h2>
           <p>{selectedVenue.label}</p>
+          <GoogleMap lat={selectedVenue.lat} lng={selectedVenue.lon} />
         </div>
       )}
     </div>
