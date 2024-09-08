@@ -14,8 +14,9 @@ interface VenueOption {
   lat: number;
   lon: number;
   address: string;
+  photos: string[];
 }
-type BasicOption = { label: string; name: string; value: string, lat: number, lon: number, address: string };
+type BasicOption = { label: string; name: string; value: string, lat: number, lon: number, address: string, photos: string[]; };
 
 function RestaurantAutocompleteSearch() {
   const [city, setCity] = useState('');
@@ -102,6 +103,7 @@ function RestaurantAutocompleteSearch() {
           lat: result.geometry.location.lat || 'unknown',
           lon: result.geometry.location.lng || 'unknown',
           address: result.vicinity || 'unknown',
+          photos: result.photos ? result.photos.map((photo: any) => photo.photo_reference) : [],
         }));
         console.log('Venue Options:', venueOptions);
         setSuggestions(venueOptions);
@@ -115,7 +117,6 @@ function RestaurantAutocompleteSearch() {
   useEffect(() => {
     getCurrentLocation();
   }, []);
-
 
 
   // load venue options...
@@ -137,6 +138,10 @@ function RestaurantAutocompleteSearch() {
     } else {
       setSelectedVenue(null);
     }
+  };
+
+  const getPhotoUrl = (photoReference: string) => {
+    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`;
   };
 
   return (
@@ -185,7 +190,8 @@ function RestaurantAutocompleteSearch() {
           defaultOptions
           onChange={handleVenueSelect} // Updated handler
           placeholder="Search for restaurants"
-          value={selectedVenue ? { label: selectedVenue.label, name: selectedVenue.name, value: selectedVenue.value, lat: selectedVenue.lat, lon: selectedVenue.lon, address: selectedVenue.address } : null}
+          value={selectedVenue ? { label: selectedVenue.label, name: selectedVenue.name, value: selectedVenue.value, lat: selectedVenue.lat, 
+            lon: selectedVenue.lon, address: selectedVenue.address, photos: selectedVenue.photos } : null}
           isClearable
         />
       </div>
@@ -194,6 +200,20 @@ function RestaurantAutocompleteSearch() {
         <div className="mt-4">
           <h2 className="text-xl font-semibold">Selected Venue:</h2>
           <p>{selectedVenue.label}</p>
+          <div className="flex flex-wrap mt-4">
+            {selectedVenue.photos.length > 0 ? (
+              selectedVenue.photos.map((photo, index) => (
+                <img
+                  key={index}
+                  src={getPhotoUrl(photo)}
+                  alt={`Restaurant ${index + 1}`}
+                  className="w-64 h-64 object-cover mr-4 mb-4"
+                />
+              ))
+            ) : (
+              <p>No photos available</p>
+            )}
+          </div>
           <GoogleMap lat={selectedVenue.lat} lng={selectedVenue.lon} />
         </div>
       )}
