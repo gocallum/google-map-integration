@@ -1,4 +1,3 @@
-import RestaurantSearch from '@/app/components/searchmap';
 import RestaurantAutocompleteSearch from './components/RestaurantAutocompleteSearch';
 
 function HomePage() {

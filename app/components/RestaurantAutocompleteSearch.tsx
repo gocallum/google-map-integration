@@ -1,224 +1,129 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import AsyncSelect from 'react-select/async';
-import { fetchRestaurantAutocomplete, PlacePrediction } from '@/app/actions/searchmap';
-import { SingleValue } from 'react-select';
+import React, { useState, useEffect } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { fetchNearbyRestaurants, VenueOption } from '@/app/actions/searchmap';
 import GoogleMap from './map';
+import { FaClock, FaMapMarkerAlt, FaChevronDown } from 'react-icons/fa';
 
-// Define the structure of a VenueOption
-interface VenueOption {
-  label: string;
-  name: string;
-  value: string;
-  lat: number;
-  lon: number;
-  address: string;
-  photos: string[];
-}
-type BasicOption = { label: string; name: string; value: string, lat: number, lon: number, address: string, photos: string[]; };
-
-function RestaurantAutocompleteSearch() {
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [postcode, setPostcode] = useState('');
+export default function RestaurantSearch() {
+  const [lat, setLat] = useState<number | null>(null);
+  const [lon, setLon] = useState<number | null>(null);
   const [selectedVenue, setSelectedVenue] = useState<VenueOption | null>(null);
-  const [suggestions, setSuggestions] = useState<VenueOption[]>([]);
-  const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAP_KEY;
+  const [options, setOptions] = useState<VenueOption[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Function to fetch user's current location and get city, state, postcode
-  const getCurrentLocation = () => {
-    console.log("getCurrentLocation...");
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(showPosition, showError);
-    } else {
-      console.log("Geolocation is not supported by this browser.");
-    }
-  };
-
-  const showPosition = (position: { coords: { latitude: number; longitude: number; }; }) => {
-    const lat = position.coords.latitude;
-    const lon = position.coords.longitude;
-    console.log("showposition:", lat, lon);
-    // Call reverse geocoding API to get city, state, and postcode
-    getCityFromCoordinates(lat, lon);
-  };
-
-  const showError = (error: GeolocationPositionError) => {
-    switch (error.code) {
-      case error.PERMISSION_DENIED:
-        console.log("User denied the request for Geolocation.");
-        break;
-      case error.POSITION_UNAVAILABLE:
-        console.log("Location information is unavailable.");
-        break;
-      case error.TIMEOUT:
-        console.log("The request to get user location timed out.");
-        break;
-      default:
-        console.log("An unknown error occurred.");
-        break;
-    }
-  };
-
-  // Reverse Geocoding API call (e.g., Google Maps API) to get city, state, postcode
-  const getCityFromCoordinates = async (lat: number, lon: number) => {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${GOOGLE_API_KEY}`;
-
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.results.length > 0) {
-        const addressComponents = data.results[0].address_components;
-        let city = "";
-        let state = "";
-        let postcode = "";
-
-        addressComponents.forEach((component: { types: string[]; long_name: string; short_name: string; }) => {
-          if (component.types.includes("locality")) {
-            city = component.long_name;
-          }
-          if (component.types.includes("administrative_area_level_1")) {
-            state = component.short_name;
-          }
-          if (component.types.includes("postal_code")) {
-            postcode = component.long_name;
-          }
-        });
-
-        // Populate the form fields
-        setCity(city);
-        setState(state);
-        setPostcode(postcode);
-
-        const suggestions = await fetchRestaurantAutocomplete('', lat + ' ' + lon);
-        console.log(">> Suggestions received:", suggestions);
-
-        // Store the suggestions in state
-        const venueOptions = suggestions.map((result: any) => ({
-          label: result.name + " (" + result.vicinity + ")" || 'Unknown',
-          name: result.name || 'unknown',
-          value: result.place_id || 'unknown',
-          lat: result.geometry.location.lat || 'unknown',
-          lon: result.geometry.location.lng || 'unknown',
-          address: result.vicinity || 'unknown',
-          photos: result.photos ? result.photos.map((photo: any) => photo.photo_reference) : [],
-        }));
-        console.log('Venue Options:', venueOptions);
-        setSuggestions(venueOptions);
-      }
-    } catch (error) {
-      console.error('Error during reverse geocoding:', error);
-    }
-  };
-
-  // Fetch location on component mount
+  // Fetch user's location using the browser's geolocation API
   useEffect(() => {
-    getCurrentLocation();
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLat(position.coords.latitude);
+        setLon(position.coords.longitude);
+      },
+      (error) => {
+        console.error('Error fetching location:', error);
+      }
+    );
   }, []);
 
+  // Load restaurant options dynamically based on input
+  const loadRestaurantOptions = async (inputValue: string) => {
+    setSearchTerm(inputValue);
+    if (!inputValue || inputValue.length < 2 || !lat || !lon) {
+      setOptions([]);
+      setIsDropdownOpen(false);
+      return;
+    }
 
-  // load venue options...
-  const loadRestaurantOptions = (inputValue: string): Promise<VenueOption[]> => {
-    return new Promise((resolve) => {
-      const filteredOptions = suggestions.filter(option => 
-        option.name.toLowerCase().startsWith(inputValue.toLowerCase()) // Match if the label starts with the input
-      );
-      resolve(filteredOptions);
-    });
-  };
+    try {
+      const location = `${lat},${lon}`;
+      const results = await fetchNearbyRestaurants(inputValue, location);
 
-  // Handle venue selection from AsyncSelect
-  const handleVenueSelect = (newValue: SingleValue<BasicOption>, actionMeta: any) => {
-    if (newValue) {
-      const venueOption = suggestions.find(option => option.name.toLowerCase() === newValue.name.toLowerCase());
-      if (venueOption)
-        setSelectedVenue(venueOption);
-    } else {
-      setSelectedVenue(null);
+      setOptions(results);
+      setIsDropdownOpen(true);
+    } catch (error) {
+      console.error('Error fetching nearby restaurants:', error);
+      setOptions([]);
+      setIsDropdownOpen(false);
     }
   };
 
-  const getPhotoUrl = (photoReference: string) => {
-    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`;
+  const handleVenueSelect = (option: VenueOption) => {
+    setSelectedVenue(option);
+    setSearchTerm(option.name);
+    setIsDropdownOpen(false);
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Restaurant Autocomplete Search</h1>
-
-      <div className="mb-4">
-        <label className="block text-gray-700">City:</label>
-        <input
-          type="text"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          placeholder="Enter city"
-          className="p-2 border w-full"
-          required
-        />
-      </div>
-      <div className="mb-4">
-        <label className="block text-gray-700">State:</label>
-        <input
-          type="text"
-          value={state}
-          onChange={(e) => setState(e.target.value)}
-          placeholder="Enter state"
-          className="p-2 border w-full"
-          required
-        />
-      </div>
-      <div className="mb-4">
-        <label className="block text-gray-700">Postcode:</label>
-        <input
-          type="text"
-          value={postcode}
-          onChange={(e) => setPostcode(e.target.value)}
-          placeholder="Enter postcode"
-          className="p-2 border w-full"
-          required
-        />
-      </div>
-
-      <div className="mb-4">
-        <label className="block text-gray-700">Restaurant Search:</label>
-        <AsyncSelect
-          cacheOptions
-          loadOptions={loadRestaurantOptions}
-          defaultOptions
-          onChange={handleVenueSelect} // Updated handler
-          placeholder="Search for restaurants"
-          value={selectedVenue ? { label: selectedVenue.label, name: selectedVenue.name, value: selectedVenue.value, lat: selectedVenue.lat, 
-            lon: selectedVenue.lon, address: selectedVenue.address, photos: selectedVenue.photos } : null}
-          isClearable
-        />
-      </div>
-
-      {selectedVenue && (
-        <div className="mt-4">
-          <h2 className="text-xl font-semibold">Selected Venue:</h2>
-          <p>{selectedVenue.label}</p>
-          <div className="flex flex-wrap mt-4">
-            {selectedVenue.photos.length > 0 ? (
-              selectedVenue.photos.map((photo, index) => (
-                <img
-                  key={index}
-                  src={getPhotoUrl(photo)}
-                  alt={`Restaurant ${index + 1}`}
-                  className="w-64 h-64 object-cover mr-4 mb-4"
-                />
-              ))
-            ) : (
-              <p>No photos available</p>
-            )}
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>Search Nearby Restaurants</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="restaurant-search">Restaurant Search:</Label>
+            <div className="relative">
+              <Input
+                id="restaurant-search"
+                placeholder="Type restaurant name..."
+                value={searchTerm}
+                onChange={(e) => loadRestaurantOptions(e.target.value)}
+                className="pr-10"
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <FaChevronDown className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
           </div>
-          <GoogleMap lat={selectedVenue.lat} lng={selectedVenue.lon} />
+
+          {isDropdownOpen && options.length > 0 && (
+            <div className="absolute z-10 w-full max-w-2xl bg-white border border-gray-200 rounded-md shadow-lg">
+              {options.map((option) => (
+                <div
+                  key={option.place_id}
+                  className="flex items-center p-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleVenueSelect(option)}
+                >
+                  <div className="flex items-center space-x-3 w-full">
+                    <div className="flex-shrink-0">
+                      {option.distance > 10 ? (
+                        <FaClock className="w-5 h-5 text-gray-400" />
+                      ) : (
+                        <FaMapMarkerAlt className="w-5 h-5 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{option.name}</p>
+                      <p className="text-sm text-gray-500 truncate">{option.vicinity}</p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <span className="text-sm text-gray-500">{option.distance.toFixed(1)} km</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-    </div>
+
+        {selectedVenue && (
+          <div className="mt-6 space-y-4">
+            <h2 className="text-lg font-semibold">Selected Venue</h2>
+            <div className="p-4 bg-gray-100 rounded-lg">
+              <p className="font-medium">{selectedVenue.name}</p>
+              <p className="text-sm text-gray-600">{selectedVenue.vicinity}</p>
+              <p className="text-sm text-gray-600">{selectedVenue.distance.toFixed(1)} km away</p>
+            </div>
+            <div className="aspect-video w-full">
+              <GoogleMap lat={selectedVenue.geometry.location.lat} lng={selectedVenue.geometry.location.lng} />
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
-
-export default RestaurantAutocompleteSearch;
