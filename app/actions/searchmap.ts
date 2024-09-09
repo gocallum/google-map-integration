@@ -14,6 +14,7 @@ export interface VenueOption {
     };
   };
   distance: number; // Distance from the user's location
+  photos: string[];
 }
 
 // Haversine formula to calculate the distance between two lat/lon points
@@ -73,7 +74,80 @@ export async function fetchNearbyRestaurants(query: string, userLocation: string
           },
         },
         distance, // Add distance in kilometers
+        photos: result.photos ? result.photos.map((photo: any) => photo.photo_reference) : [],
       };
     })
     .sort((a: { distance: number; }, b: { distance: number; }) => a.distance - b.distance); // Sort results by distance (ascending)
 }
+
+export async function getPhotoUrl(query: string): Promise<string> {
+  if (!GOOGLE_MAP_KEY) {
+    throw new Error('Google Maps API key is missing');
+  }
+
+  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${query}&key=${GOOGLE_MAP_KEY}`;
+}
+
+// Fetch cities/postcodes based on input type (post code or city or suburb)
+export async function getCityList(query: string, searchType: 'city' | 'postcode'): Promise<any> {
+  if (!GOOGLE_MAP_KEY) {
+    throw new Error('Google Maps API key is missing');
+  }
+
+  // Use Google Place Autocomplete API
+  const typeFilter = searchType === 'postcode' ? 'geocode' : '(cities)';
+
+  const endpoint = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&types=${typeFilter}&components=country:au&key=${GOOGLE_MAP_KEY}`;
+  const response = await fetch(endpoint, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch cities/postcodes: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+//Using PlaceID, search for city after input of city or post code for geometry location
+export async function getPlaceDetails(placeId: string): Promise<any> {
+  if (!GOOGLE_MAP_KEY) {
+    throw new Error('Google Maps API key is missing');
+  }
+  const endpoint = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${GOOGLE_MAP_KEY}`;
+  const response = await fetch(endpoint, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch cities/postcodes: ${response.statusText}`);
+  }
+
+  return await response.json();
+};
+
+//reverse geocoding request to get city details from latitude and longitude
+export async function getCityFromCoordinates(lat: number, lon: number): Promise<any> {
+  if (!GOOGLE_MAP_KEY) {
+    throw new Error('Google Maps API key is missing');
+  }
+  const endpoint = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${GOOGLE_MAP_KEY}`;
+  const response = await fetch(endpoint, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch city from coords: ${response.statusText}`);
+  }
+
+  return await response.json();
+};
