@@ -32,7 +32,8 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 // Fetch restaurants and return them as VenueOption directly
-export async function fetchNearbyRestaurants(query: string, userLocation: string): Promise<VenueOption[]> {
+export async function fetchNearbyRestaurants(query: string, userLocation: string, requestId: string
+): Promise<{ results: VenueOption[], requestId: string }> {
   if (!GOOGLE_MAP_KEY) {
     throw new Error('Google Maps API key is missing');
   }
@@ -59,7 +60,7 @@ export async function fetchNearbyRestaurants(query: string, userLocation: string
   console.log('Nearby Search Results:', data);
 
   // Filter and map the response to include only results that start with the query, and sort by distance
-  return data.results
+  const results = data.results
     .filter((result: any) => result.name.toLowerCase().startsWith(query.toLowerCase())) // Filter results based on name starting with the query
     .map((result: any) => {
       const distance = calculateDistance(userLat, userLon, result.geometry.location.lat, result.geometry.location.lng);
@@ -78,6 +79,8 @@ export async function fetchNearbyRestaurants(query: string, userLocation: string
       };
     })
     .sort((a: { distance: number; }, b: { distance: number; }) => a.distance - b.distance); // Sort results by distance (ascending)
+
+  return { results, requestId };
 }
 
 export async function getPhotoUrl(query: string): Promise<string> {

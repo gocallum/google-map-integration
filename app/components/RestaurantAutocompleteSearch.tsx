@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import AsyncSelect from 'react-select/async';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ export default function RestaurantSearch() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState<any | null>(null); // Selected city
   const [useCurrentLocation, setUseCurrentLocation] = useState(false); // New state for disabling city select
+  const latestRequestIdRef = useRef<string | null>(null);
 
   // Fetch user's location using the browser's geolocation API
   const getCurrentLocation = () => {
@@ -78,12 +80,22 @@ export default function RestaurantSearch() {
       return;
     }
 
+    const requestId = uuidv4();
+    latestRequestIdRef.current = requestId;
+
     try {
       const location = `${lat},${lon}`;
-      const results = await fetchNearbyRestaurants(inputValue, location);
+      const { results, requestId: responseId } = await fetchNearbyRestaurants(inputValue, location, requestId);
       console.log('Restaurants Results:', results);
-      setOptions(results);
-      setIsDropdownOpen(true);
+
+      // Only update state if this is still the latest request
+      if (responseId === latestRequestIdRef.current) {
+        console.log('Results:', results);
+        setOptions(results);
+        setIsDropdownOpen(true);
+      } else {
+        console.log('Ignoring outdated response');
+      }
     } catch (error) {
       console.error('Error fetching nearby restaurants:', error);
       setOptions([]);
