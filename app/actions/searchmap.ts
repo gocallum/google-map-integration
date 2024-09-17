@@ -7,11 +7,9 @@ export interface VenueOption {
   place_id: string;
   name: string;
   vicinity: string;
-  geometry: {
-    location: {
-      lat: number;
-      lng: number;
-    };
+  location: {
+    lat: number;
+    lng: number;
   };
   distance: number; // Distance from the user's location
   photos: string[];
@@ -68,11 +66,9 @@ export async function fetchNearbyRestaurants(query: string, userLocation: string
         place_id: result.place_id,
         name: result.name,
         vicinity: result.vicinity,
-        geometry: {
-          location: {
-            lat: result.geometry.location.lat,
-            lng: result.geometry.location.lng,
-          },
+        location: {
+          lat: result.geometry.location.lat,
+          lng: result.geometry.location.lng,
         },
         distance, // Add distance in kilometers
         photos: result.photos ? result.photos.map((photo: any) => photo.photo_reference) : [],

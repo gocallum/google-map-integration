@@ -12,6 +12,10 @@ import GoogleMap from './map';
 import { FaClock, FaMapMarkerAlt, FaChevronDown } from 'react-icons/fa';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 
+interface VenueSearchProps {
+  onCitySelected: (city: any) => void;
+}
+
 export default function RestaurantSearch() {
   const [lat, setLat] = useState<number | null>(null);
   const [lon, setLon] = useState<number | null>(null);
@@ -38,7 +42,7 @@ export default function RestaurantSearch() {
         const placeDetails = await getCityFromCoordinates(position.coords.latitude, position.coords.longitude); // Fetch details using place_id
         const addressComponents = placeDetails.results[0].address_components;
         const placeId = placeDetails.results[0].place_id;
-        let city = "", state = "", country = "";
+        let city = "", state = "", country = "", post_code = "";
         addressComponents.forEach((component: { types: string[]; long_name: string; short_name: string; }) => {
           if (component.types.includes("locality"))
             city = component.long_name;
@@ -48,12 +52,25 @@ export default function RestaurantSearch() {
           if (component.types.includes("country")) {
             country = component.long_name;
           }
+          if (component.types.includes("post_code")) {
+            post_code = component.long_name;
+          }
         });
+
+        //return this data to dashboard
+        const selectedCityData = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          postcode: post_code,
+          cityPreference: city,
+        };
 
         setSelectedCity({
           label: city + " " + state + ", " + country,
           value: placeId,
         });
+
+        // onCitySelected(selectedCityData); //TODO on lunch buddy app
         setUseCurrentLocation(true); // Disable city select when location is used
         console.log('Current Location:', selectedCity, " -- ", city + " " + state + ", " + country);
       },
@@ -164,6 +181,15 @@ export default function RestaurantSearch() {
           setSearchTerm(""); //clear the restaurant list below
           setSelectedVenue(null);
           setIsDropdownOpen(false);
+
+          //return this data to dashboard
+          const selectedCityData = {
+            latitude: placeDetails.result.geometry.location.lat,
+            longitude: placeDetails.result.geometry.location.lat,
+            postcode: placeDetails.result.address_components[4].long_name,
+            cityPreference: placeDetails.result.address_components[0].long_name,
+          };
+          // onCitySelected(selectedCityData); //TODO on lunch buddy app
         }
       } catch (error) {
         console.error('Error fetching place details:', error);
